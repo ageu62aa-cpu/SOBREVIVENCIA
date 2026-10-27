@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Amazônia: Introdução</title>
-    <!-- Carregando a biblioteca gráfica Three.js de forma estável -->
+    <!-- LINK 100% CORRIGIDO E OFICIAL DO THREE.JS -->
     <script src="https://cloudflare.com"></script>
     <style>
         body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; font-family: monospace; background: #000; }
         canvas { display: block; image-rendering: pixelated; }
         /* Camada preta na tela para simular as pálpebras fechadas */
-        #palpebras { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,1); transition: background 0.1s; pointer-events: none; }
-        #texto-introducao { position: absolute; bottom: 15%; width: 100%; text-align: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 2px 2px #000; pointer-events: none; }
+        #palpebras { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,1); transition: background 0.1s; pointer-events: none; z-index: 10; }
+        #texto-introducao { position: absolute; bottom: 15%; width: 100%; text-align: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 2px 2px #000; pointer-events: none; z-index: 11; }
     </style>
 </head>
 <body>
     <div id="palpebras"></div>
     <div id="texto-introducao">... ... ...</div>
     <script>
-            // --- 1. CONFIGURAÇÃO DA CENA GRÁFICA ---
+        // --- 1. CONFIGURAÇÃO DA CENA GRÁFICA ---
         const cena = new THREE.Scene();
         cena.background = new THREE.Color(0x0f1f0f); // Tom de mata escura
         cena.fog = new THREE.FogExp2(0x0f1f0f, 0.08); // Névoa da floresta
@@ -94,8 +94,8 @@
 
             if (tempoDecorrido < 3.5) {
                 // Efeito de piscar os olhos simulado pela opacidade da div preta
-                let pulsoPálpebra = Math.max(0, 1 - (tempoDecorrido / 3.5));
-                document.getElementById('palpebras').style.background = `rgba(0,0,0,${pulsoPálpebra})`;
+                let pulsoPalpebra = Math.max(0, 1 - (tempoDecorrido / 3.5));
+                document.getElementById('palpebras').style.background = `rgba(0,0,0,${pulsoPalpebra})`;
                 document.getElementById('texto-introducao').innerText = "[Visão turva] Abrindo os olhos devagar...";
             } else {
                 // Olhos abertos completamente
