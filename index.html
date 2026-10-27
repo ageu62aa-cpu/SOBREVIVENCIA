@@ -225,3 +225,42 @@
                     document.getElementById('visao-efeito').style.background = `rgba(0,0,0,${opacidadeOlhos})`;
                 } else {
                     document.getElementById('visao-efeito').style.background = "none";
+                    document.getElementById('visao-efeito').style.boxShadow = "inset 0 0 100px rgba(0,0,0,0.8)";
+camera.rotation.set(0, 0, 0); estadoJogo = "JOGANDO";
+document.getElementById('legendas').innerText = "Você recobrou a consciência. Encontre recursos e água.";
+}
+renderizador.render(cena, camera); return;
+}
+if (estadoJogo === "MORTO") {
+document.getElementById('vida-fill').style.width = "0%";
+document.getElementById('visao-efeito').style.background = "rgba(100,0,0,0.4)";
+document.getElementById('legendas').innerText = "O Especialista sucumbiu à selva."; return;
+}
+const direcao = new THREE.Vector3(); camera.getWorldDirection(direcao); direcao.y = 0; direcao.normalize();
+const deLado = new THREE.Vector3(); deLado.crossVectors(camera.up, direcao).normalize();
+const velCaminhada = 4.5 * delta;
+if (teclas['w']) camera.position.addScaledVector(direcao, velCaminhada);
+if (teclas['s']) camera.position.addScaledVector(direcao, -velCaminhada);
+if (teclas['a']) camera.position.addScaledVector(deLado, velCaminhada);
+if (teclas['d']) camera.position.addScaledVector(deLado, -velCaminhada);
+velocidadeY += GRAVIDADE * delta; camera.position.y += velocidadeY * delta;
+if (camera.position.y <= 1.8) { camera.position.y = 1.8; velocidadeY = 0; noChao = true; }
+heroiGrupo.position.set(camera.position.x, camera.position.y - 1.8, camera.position.z); heroiGrupo.rotation.y = camera.rotation.y;
+if (estadoJacare === "ATACANDO") { jacare.position.x += (camera.position.x - jacare.position.x) * delta * 2; }
+else { jacare.position.x += (alvoJacareX - jacare.position.x) * delta * 0.8; }
+listaCobras.forEach(cobra => {
+if (camera.position.distanceTo(cobra.position) < 1.1 && !envenenado) {
+envenenado = true; document.getElementById('status-medico').innerText = "ENVENENADO";
+document.getElementById('status-medico').style.color = "red";
+document.getElementById('legendas').innerText = "PICADO POR JARARACA! USE A ERVA NO GUIA!";
+}
+});
+fome -= delta * 0.6;
+if (envenenado) { vida -= delta * 10; document.getElementById('visao-efeito').style.boxShadow = "inset 0 0 120px rgba(180,0,0,0.8)"; }
+if (vida <= 0) estadoJogo = "MORTO";
+document.getElementById('fome-fill').style.width = Math.max(0, fome) + "%";
+document.getElementById('vida-fill').style.width = Math.max(0, vida) + "%";
+renderizador.render(cena, camera);
+}
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderizador.setSize(window.innerWidth, window.innerHeight); });
+renderizarJogo();
