@@ -1,1 +1,188 @@
 
+html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amazônia: Sobrevivência Solo</title>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; font-family: monospace; user-select: none; background: #050f05; }
+        canvas { display: block; image-rendering: pixelated; }
+        
+        #hud { position: absolute; top: 20px; left: 20px; color: #7f9f7f; font-size: 16px; text-shadow: 2px 2px #000; pointer-events: none; }
+        .status-bar { width: 150px; height: 10px; background: #222; border: 1px solid #444; margin-top: 5px; margin-bottom: 10px; }
+        #fome-fill { width: 100%; height: 100%; background: #c8a2c8; }
+        #agua-fill { width: 100%; height: 100%; background: #4a7a96; }
+        #vida-fill { width: 100%; height: 100%; background: #a64a4a; }
+        
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: rgba(255,255,255,0.4); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #visao-efeito { position: absolute; width: 100%; height: 100%; pointer-events: none; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); transition: all 0.3s; }
+        #legendas { position: absolute; bottom: 15%; width: 100%; text-align: center; color: #fff; font-size: 18px; text-shadow: 2px 2px #000; pointer-events: none; font-weight: bold; padding: 0 20px; box-sizing: border-box; }
+        
+        #controles-toque { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; pointer-events: none; }
+        .btn-acao { pointer-events: auto; width: 75px; height: 75px; background: rgba(20,40,20,0.7); border: 2px solid #5a7a5a; border-radius: 50%; color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+        .btn-acao:active { background: rgba(40,80,40,0.9); }
+
+        #caderno { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; height: 440px; background: #e2d4b7; border: 8px solid #5c4033; box-shadow: 0 0 30px #000; padding: 20px; box-sizing: border-box; color: #2b1d0c; border-radius: 4px; z-index: 10; }
+        #caderno h2 { margin-top: 0; border-bottom: 2px dashed #2b1d0c; padding-bottom: 5px; font-size: 18px; }
+        #caderno p { font-size: 13px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <div id="visao-efeito"></div>
+    <div id="crosshair"></div>
+    <div id="hud">
+        <div>SAÚDE CORPO:</div>
+        <div class="status-bar"><div id="vida-fill"></div></div>
+        <div>NÍVEL DE FOME:</div>
+        <div class="status-bar"><div id="fome-fill"></div></div>
+        <div>CANTIL DE BAMBU:</div>
+        <div class="status-bar"><div id="agua-fill"></div></div>
+        <div id="periodo-dia" style="color: #dfd;">PERÍODO: DIA</div>
+    </div>
+    
+    <div id="legendas">Você sobreviveu à queda. Olhe para onde pisa! Cobras peçonhentas se camuflam nas folhas.</div>
+
+    <div id="controles-toque">
+        <div class="btn-acao" id="btn-agua">ENCHER<br>CANTIL</div>
+        <div class="btn-acao" id="btn-isca">JOGAR<br>ISCA</div>
+        <div class="btn-acao" id="btn-colher">COLHER<br>ERVA</div>
+        <div class="btn-acao" id="btn-caderno">ABRIR<br>GUIA</div>
+    </div>
+
+    <div id="caderno">
+        <h2>GUIA DO ESPECIALISTA (SOLO)</h2>
+        <p><strong>Condição:</strong> <span id="status-medico">Estável</span></p>
+        <p><strong>Inventário de Ervas:</strong> <span id="qtd-ervas">0</span> folhas medicinais.</p>
+        <hr style="border: 1px dashed #2b1d0c;">
+        <p><strong>Estratégia de Sobrevivência:</strong></p>
+        <p>- No modo solo, **uma picada de cobra é fatal** em segundos se você não tiver colhido uma erva medicinal previamente.</p>
+        <p>- Use o botão COLHER ao ficar exatamente em cima de pequenas plantas verdes no chão.</p>
+        <button style="margin-top:20px; width:100%; padding:10px; background:#5c4033; color:#fff; border:none; cursor:pointer; font-weight:bold;" onclick="fecharCaderno()">FECHAR GUIA</button>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURAÇÃO DO MUNDO RETRÔ ---
+        const cena = new THREE.Scene();
+        cena.background = new THREE.Color(0x1a331a);
+        cena.fog = new THREE.FogExp2(0x1a331a, 0.08);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderizador = new THREE.WebGLRenderer({ antialias: false });
+        renderizador.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderizador.domElement);
+
+        const luzHemisferica = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+        cena.add(luzHemisferica);
+        const luzFogueira = new THREE.PointLight(0xff7700, 0, 15);
+        luzFogueira.position.set(0, 1, -5);
+        cena.add(luzFogueira);
+
+        // --- 2. STATUS DO JOGADOR SOLO ---
+        let vida = 100;
+        let fome = 100;
+        let aguaNoCantil = 0;
+        let ervasNoInventario = 0;
+        let envenenado = false;
+        let tempoDoJogo = 0;
+        let estadoJogo = "JOGANDO";
+        
+        camera.position.set(0, 1.8, 5);
+
+        // --- 3. CENÁRIO BASE ---
+        const soloGeo = new THREE.PlaneGeometry(100, 100);
+        const soloMat = new THREE.MeshBasicMaterial({ color: 0x24190e }); // Chão marrom serrapilheira
+        const solo = new THREE.Mesh(soloGeo, soloMat);
+        solo.rotation.x = -Math.PI / 2;
+        cena.add(solo);
+
+        const rioGeo = new THREE.PlaneGeometry(25, 100);
+        const rioMat = new THREE.MeshBasicMaterial({ color: 0x3d3023 }); // Rio barrento
+        const rio = new THREE.Mesh(rioGeo, rioMat);
+        rio.rotation.x = -Math.PI / 2;
+        rio.position.set(-20, 0.05, 0);
+        cena.add(rio);
+
+        const fogueiraGeo = new THREE.ConeGeometry(0.5, 0.7, 4);
+        const fogueiraMat = new THREE.MeshBasicMaterial({ color: 0x422e22 });
+        const fogueira = new THREE.Mesh(fogueiraGeo, fogueiraMat);
+        fogueira.position.set(0, 0.3, -5);
+        cena.add(fogueira);
+
+        const jacareGeo = new THREE.BoxGeometry(1.5, 0.3, 3.5);
+        const jacareMat = new THREE.MeshBasicMaterial({ color: 0x111c11 });
+        const jacare = new THREE.Mesh(jacareGeo, jacareMat);
+        jacare.position.set(-12, 0.15, 0);
+        cena.add(jacare);
+
+        let estadoJacare = "PATRULHANDO";
+        let alvoJacareX = -12;
+
+        // --- 4. GERAÇÃO DE PERIGOS E RECURSOS (Cobras e Ervas) ---
+        const listaCobras = [];
+        const listaErvas = [];
+
+        // Criar Cobras Peçonhentas Ocultas (Vermelhas/Marrons escuras mescladas no chão)
+        for (let i = 0; i < 6; i++) {
+            const cobraGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 4);
+            const cobraMat = new THREE.MeshBasicMaterial({ color: 0x3a2010 }); // Camuflada
+            const cobra = new THREE.Mesh(cobraGeo, cobraMat);
+            cobra.rotation.z = Math.PI / 2;
+            cobra.position.set((Math.random() * 16) - 8, 0.05, (Math.random() * 20) - 10);
+            cena.add(cobra);
+            listaCobras.push(cobra);
+        }
+
+        // Criar Ervas Medicinais (Pequenos arbustos verdes no chão)
+        for (let i = 0; i < 5; i++) {
+            const ervaGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const ervaMat = new THREE.MeshBasicMaterial({ color: 0x2e6b2e }); // Verde vivo
+            const erva = new THREE.Mesh(ervaGeo, ervaMat);
+            erva.position.set((Math.random() * 16) - 8, 0.15, (Math.random() * 20) - 10);
+            cena.add(erva);
+            listaErvas.push(erva);
+        }
+
+        // --- 5. CONTROLES DE MOVIMENTO E VISÃO ---
+        let teclas = {};
+        window.addEventListener('keydown', (e) => { teclas[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', (e) => { teclas[e.key.toLowerCase()] = false; });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === document.body && estadoJogo === "JOGANDO") {
+                camera.rotation.y -= e.movementX * 0.002;
+                camera.rotation.x -= e.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
+            }
+        });
+
+        document.body.addEventListener('click', () => {
+            if (document.getElementById('caderno').style.display !== 'block' && estadoJogo === "JOGANDO") {
+                document.body.requestPointerLock();
+            }
+        });
+
+        // --- 6. MECÂNICAS DE AÇÃO ---
+
+        // Coleta de Água
+        document.getElementById('btn-agua').addEventListener('click', () => {
+            if (estadoJogo !== "JOGANDO") return;
+            if (camera.position.x < -6) {
+                document.getElementById('legendas').innerText = "Enchendo cantil...";
+                if (estadoJacare !== "DISTRAIDO") {
+                    estadoJacare = "ATACANDO";
+                    document.getElementById('legendas').style.color = "#ff4444";
+                    document.getElementById('legendas').innerText = "O JACARÉ VIU VOCÊ! ELE VAI ATACAR EM 3 SEGUNDOS!";
+                }
+                setTimeout(() => {
+                    if (camera.position.x < -6 && estadoJogo === "JOGANDO") {
+                        if (estadoJacare === "ATACANDO") {
+                            vida = 0;
+                            estadoJogo = "MORTO";
+                            document.getElementById('legendas').innerText = "O Jacaré-Açu pegou você na margem do rio. Fim.";
+                        } else {
+                            aguaNoCantil = 100;
+                        
