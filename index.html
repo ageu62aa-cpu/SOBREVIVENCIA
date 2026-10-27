@@ -3,264 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Amazônia: Sobrevivência Solo</title>
-    <!-- LINK CORRIGIDO DO THREE.JS PARA EXECUTAR O GRÁFICO 3D -->
+    <title>Amazônia: Introdução</title>
+    <!-- Carregando a biblioteca gráfica Three.js de forma estável -->
     <script src="https://cloudflare.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; font-family: monospace; user-select: none; background: #010a01; }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; font-family: monospace; background: #000; }
         canvas { display: block; image-rendering: pixelated; }
-        #hud { position: absolute; top: 20px; left: 20px; color: #7f9f7f; font-size: 16px; text-shadow: 2px 2px #000; pointer-events: none; z-index: 5; }
-        .status-bar { width: 150px; height: 10px; background: #222; border: 1px solid #444; margin-top: 5px; margin-bottom: 10px; }
-        #fome-fill { width: 100%; height: 100%; background: #c8a2c8; }
-        #agua-fill { width: 100%; height: 100%; background: #4a7a96; }
-        #vida-fill { width: 100%; height: 100%; background: #a64a4a; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: rgba(255,255,255,0.4); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; }
-        #visao-efeito { position: absolute; width: 100%; height: 100%; pointer-events: none; box-shadow: inset 0 0 100px rgba(0,0,0,0.9); transition: all 0.3s; background: rgba(0,0,0,1); z-index: 4; }
-        #legendas { position: absolute; bottom: 15%; width: 100%; text-align: center; color: #fff; font-size: 18px; text-shadow: 2px 2px #000; pointer-events: none; font-weight: bold; padding: 0 20px; box-sizing: border-box; z-index: 5; }
-        #controles-toque { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; pointer-events: none; z-index: 5; }
-        .btn-acao { pointer-events: auto; width: 75px; height: 75px; background: rgba(20,40,20,0.7); border: 2px solid #5a7a5a; border-radius: 50%; color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
-        .btn-acao:active { background: rgba(40,80,40,0.9); }
-        #caderno { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; height: 440px; background: #e2d4b7; border: 8px solid #5c4033; box-shadow: 0 0 30px #000; padding: 20px; box-sizing: border-box; color: #2b1d0c; border-radius: 4px; z-index: 10; }
-        #caderno h2 { margin-top: 0; border-bottom: 2px dashed #2b1d0c; padding-bottom: 5px; font-size: 18px; }
-        #caderno p { font-size: 13px; line-height: 1.4; }
+        /* Camada preta na tela para simular as pálpebras fechadas */
+        #palpebras { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,1); transition: background 0.1s; pointer-events: none; }
+        #texto-introducao { position: absolute; bottom: 15%; width: 100%; text-align: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 2px 2px #000; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="visao-efeito"></div>
-    <div id="crosshair"></div>
-    <div id="hud">
-        <div>SAÚDE CORPO:</div>
-        <div class="status-bar"><div id="vida-fill"></div></div>
-        <div>NÍVEL DE FOME:</div>
-        <div class="status-bar"><div id="fome-fill"></div></div>
-        <div>CANTIL DE BAMBU:</div>
-        <div class="status-bar"><div id="agua-fill"></div></div>
-        <div id="periodo-dia" style="color: #dfd;">PERÍODO: DIA</div>
-    </div>
-    <div id="legendas">... ... ...</div>
-    <div id="controles-toque">
-        <div class="btn-acao" id="btn-agua">ENCHER<br>CANTIL</div>
-        <div class="btn-acao" id="btn-isca">JOGAR<br>ISCA</div>
-        <div class="btn-acao" id="btn-colher">COLHER<br>ERVA</div>
-        <div class="btn-acao" id="btn-caderno">ABRIR<br>GUIA</div>
-    </div>
-    <div id="caderno">
-        <h2>GUIA DO ESPECIALISTA (SOLO)</h2>
-        <p><strong>Condição:</strong> <span id="status-medico">Estável</span></p>
-        <p><strong>Inventário de Ervas:</strong> <span id="qtd-ervas">0</span> folhas medicinais.</p>
-        <hr style="border: 1px dashed #2b1d0c;">
-        <p><strong>Estratégia de Sobrevivência:</strong></p>
-        <p>- Você sobreviveu à queda da aeronave. Seu parceiro não resistiu.</p>
-        <p>- Use as teclas W, A, S, D para se movimentar e ESPAÇO para pular obstáculos.</p>
-        <button style="margin-top:20px; width:100%; padding:10px; background:#5c4033; color:#fff; border:none; cursor:pointer; font-weight:bold;" onclick="fecharCaderno()">FECHAR GUIA</button>
-    </div>
+    <div id="palpebras"></div>
+    <div id="texto-introducao">... ... ...</div>
     <script>
-        // --- 1. CONFIGURAÇÃO DO MUNDO RETRÔ ---
+            // --- 1. CONFIGURAÇÃO DA CENA GRÁFICA ---
         const cena = new THREE.Scene();
-        cena.background = new THREE.Color(0x0f1f0f);
-        cena.fog = new THREE.FogExp2(0x0f1f0f, 0.08);
+        cena.background = new THREE.Color(0x0f1f0f); // Tom de mata escura
+        cena.fog = new THREE.FogExp2(0x0f1f0f, 0.08); // Névoa da floresta
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderizador = new THREE.WebGLRenderer({ antialias: false });
         renderizador.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderizador.domElement);
 
-        const luzHemisferica = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
-        cena.add(luzHemisferica);
-        const luzFogueira = new THREE.PointLight(0xff7700, 0, 15);
-        luzFogueira.position.set(0, 1, -5);
-        cena.add(luzFogueira);
+        // Iluminação geral da floresta
+        const luzAvisada = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+        cena.add(luzAvisada);
 
-        // --- 2. STATUS DO JOGADOR SOLO ---
-        let vida = 100; let fome = 100; let aguaNoCantil = 0; let ervasNoInventario = 0;
-        let envenenado = false; let tempoDoJogo = 1.0; let estadoJogo = "ACORDANDO"; let tempoAcordar = 0;
-        let velocidadeY = 0; let noChao = true; const GRAVIDADE = -22; const FORCA_PULO = 8;
+        // Posição inicial da câmera: deitado nos destroços olhando ligeiramente para cima
+        camera.position.set(2, 0.8, -12);
+        camera.rotation.set(0.3, 0, 0);
 
-        camera.position.set(2, 1.8, -12);
-
-        // --- 3. CONSTRUÇÃO DO CENÁRIO (MATA E DESTROÇOS) ---
+        // --- 2. CONSTRUÇÃO DO CENÁRIO ---
+        // O chão da floresta
         const soloGeo = new THREE.PlaneGeometry(200, 200);
         const soloMat = new THREE.MeshBasicMaterial({ color: 0x1d140b });
         const solo = new THREE.Mesh(soloGeo, soloMat);
-        solo.rotation.x = -Math.PI / 2; cena.add(solo);
+        solo.rotation.x = -Math.PI / 2;
+        cena.add(solo);
 
-        const rioGeo = new THREE.PlaneGeometry(30, 200);
-        const rioMat = new THREE.MeshBasicMaterial({ color: 0x33281c });
-        const rio = new THREE.Mesh(rioGeo, rioMat);
-        rio.rotation.x = -Math.PI / 2; rio.position.set(-35, 0.05, 0); cena.add(rio);
+        // Os Destroços do Avião Caído
+        const aviaoGrupo = new THREE.Group();
+        aviaoGrupo.position.set(2, 0, -14);
 
-        const aviaoGrupo = new THREE.Group(); aviaoGrupo.position.set(2, 0, -14);
+        // Fuselagem retorcida
         const fuselagemGeo = new THREE.CylinderGeometry(1.5, 1.5, 7, 6);
         const metalMat = new THREE.MeshBasicMaterial({ color: 0x7c8c9c });
         const fuselagem = new THREE.Mesh(fuselagemGeo, metalMat);
-        fuselagem.rotation.z = Math.PI / 2.3; fuselagem.position.y = 0.5; aviaoGrupo.add(fuselagem);
+        fuselagem.rotation.z = Math.PI / 2.3;
+        fuselagem.position.y = 0.5;
+        aviaoGrupo.add(fuselagem);
 
+        // Asa partida do avião
         const asaGeo = new THREE.BoxGeometry(6, 0.2, 2);
         const asa = new THREE.Mesh(asaGeo, metalMat);
-        asa.position.set(-3, 1, -1); asa.rotation.y = 0.4; aviaoGrupo.add(asa);
+        asa.position.set(-3, 1, -1);
+        asa.rotation.y = 0.4;
+        aviaoGrupo.add(asa);
         cena.add(aviaoGrupo);
 
-        const fogueiraGeo = new THREE.ConeGeometry(0.5, 0.7, 4);
-        const fogueiraMat = new THREE.MeshBasicMaterial({ color: 0x422e22 });
-        const fogueira = new THREE.Mesh(fogueiraGeo, fogueiraMat);
-        fogueira.position.set(0, 0.3, -5); cena.add(fogueira);
+        // Árvores ao redor do local do impacto
+        for (let i = 0; i < 35; i++) {
+            let tx = (Math.random() * 100) - 50;
+            let tz = (Math.random() * 100) - 50;
+            // Impede que árvores brotem exatamente em cima do avião
+            if (tx > -5 && tx < 10 && tz > -18 && tz < -10) continue;
 
-        for (let i = 0; i < 45; i++) {
-            let tx = (Math.random() * 120) - 60; let tz = (Math.random() * 120) - 60;
-            if (tx > -20 && tx < 15 && tz > -20 && tz < -5) continue;
-            const troncoGeo = new THREE.CylinderGeometry(0.4, 0.6, 9, 4);
+            const troncoGeo = new THREE.CylinderGeometry(0.3, 0.5, 8, 4);
             const troncoMat = new THREE.MeshBasicMaterial({ color: 0x3d2511 });
-            const tronco = new THREE.Mesh(troncoGeo, troncoMat); tronco.position.set(tx, 4.5, tz);
+            const tronco = new THREE.Mesh(troncoGeo, troncoMat);
+            tronco.position.set(tx, 4, tz);
+
             const copaGeo = new THREE.BoxGeometry(4, 4, 4);
             const copaMat = new THREE.MeshBasicMaterial({ color: 0x122e12 });
-            const copa = new THREE.Mesh(copaGeo, copaMat); copa.position.set(tx, 8, tz);
-            cena.add(tronco); cena.add(copa);
+            const copa = new THREE.Mesh(copaGeo, copaMat);
+            copa.position.set(tx, 7, tz);
+
+            cena.add(tronco);
+            cena.add(copa);
         }
 
-        // --- 4. CONSTRUÇÃO DO PERSONAGEM (CORPO) ---
-        const heroiGrupo = new THREE.Group();
-        const peitoGeo = new THREE.BoxGeometry(0.8, 0.9, 0.4);
-        const peitoMat = new THREE.MeshBasicMaterial({ color: 0xb52626 });
-        const peito = new THREE.Mesh(peitoGeo, peitoMat); peito.position.y = 1.2; heroiGrupo.add(peito);
-        const cabecaGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-        const peleMat = new THREE.MeshBasicMaterial({ color: 0xd9a07e });
-        const cabeca = new THREE.Mesh(cabecaGeo, peleMat); cabeca.position.y = 1.85; heroiGrupo.add(cabeca);
-        const barbaGeo = new THREE.BoxGeometry(0.42, 0.2, 0.3);
-        const barbaMat = new THREE.MeshBasicMaterial({ color: 0x1a130e });
-        const barba = new THREE.Mesh(barbaGeo, barbaMat); barba.position.set(0, 1.75, 0.08); heroiGrupo.add(barba);
-        const relogioGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-        const ouroMat = new THREE.MeshBasicMaterial({ color: 0xd4af37 });
-        const relogioMeso = new THREE.Mesh(relogioGeo, ouroMat); relogioMeso.position.set(-0.5, 1.1, 0); heroiGrupo.add(relogioMeso);
-        cena.add(heroiGrupo);
+        // --- 3. ANIMAÇÃO DE ACORDAR (CICLO DE LOOP) ---
+        let tempoDecorrido = 0;
 
-        // --- 5. ELEMENTOS DA FAUNA AND RECURSOS ---
-        const jacareGeo = new THREE.BoxGeometry(1.5, 0.3, 3.5);
-        const jacareMat = new THREE.MeshBasicMaterial({ color: 0x111c11 });
-        const jacare = new THREE.Mesh(jacareGeo, jacareMat); jacare.position.set(-12, 0.15, 0); cena.add(jacare);
-        let estadoJacare = "PATRULHANDO"; let alvoJacareX = -12;
+        function rodarLoop() {
+            requestAnimationFrame(rodarLoop);
+            tempoDecorrido += 0.016; // Avança o tempo baseado em frames (60fps)
 
-        const listaCobras = []; const listaErvas = [];
-        for (let i = 0; i < 7; i++) {
-            const cGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 4);
-            const cMat = new THREE.MeshBasicMaterial({ color: 0x3d200a });
-            const c = new THREE.Mesh(cGeo, cMat); c.rotation.z = Math.PI / 2;
-            c.position.set((Math.random() * 35) - 15, 0.05, (Math.random() * 35) - 15);
-            cena.add(c); listaCobras.push(c);
-        }
-        for (let i = 0; i < 6; i++) {
-            const eGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-            const eMat = new THREE.MeshBasicMaterial({ color: 0x225c22 });
-            const e = new THREE.Mesh(eGeo, eMat);
-            e.position.set((Math.random() * 35) - 15, 0.15, (Math.random() * 35) - 15);
-            cena.add(e); listaErvas.push(e);
-        }
-
-        // --- 6. CONTROLES DE MOVIMENTO ---
-        let teclas = {};
-        window.addEventListener('keydown', (e) => {
-            teclas[e.key.toLowerCase()] = true;
-            if (e.key === " " && noChao && estadoJogo === "JOGANDO") { velocidadeY = FORCA_PULO; noChao = false; }
-        });
-        window.addEventListener('keyup', (e) => { teclas[e.key.toLowerCase()] = false; });
-        document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === document.body && estadoJogo === "JOGANDO") {
-                camera.rotation.y -= e.movementX * 0.002;
-                camera.rotation.x -= e.movementY * 0.002;
-                camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
-            }
-        });
-        document.body.addEventListener('click', () => {
-            if (estadoJogo === "JOGANDO" && document.getElementById('caderno').style.display !== 'block') { document.body.requestPointerLock(); }
-        });
-
-        // --- 7. BOTÕES INTERFACE ---
-        document.getElementById('btn-agua').addEventListener('click', () => {
-            if (estadoJogo !== "JOGANDO") return;
-            if (camera.position.x < -6) {
-                document.getElementById('legendas').innerText = "Coletando água...";
-                if (estadoJacare !== "DISTRAIDO") { estadoJacare = "ATACANDO"; }
-                setTimeout(() => {
-                    if (camera.position.x < -6 && estadoJogo === "JOGANDO") {
-                        if (estadoJacare === "ATACANDO") { vida = 0; estadoJogo = "MORTO"; }
-                        else { aguaNoCantil = 100; document.getElementById('agua-fill').style.width = "100%"; }
-                    }
-                }, 3000);
-            }
-        });
-        document.getElementById('btn-isca').addEventListener('click', () => {
-            if (estadoJogo !== "JOGANDO") return;
-            estadoJacare = "DISTRAIDO"; alvoJacareX = -25;
-            setTimeout(() => { estadoJacare = "PATRULHANDO"; alvoJacareX = -12; }, 7000);
-        });
-        document.getElementById('btn-colher').addEventListener('click', () => {
-            if (estadoJogo !== "JOGANDO") return;
-            for (let i = listaErvas.length - 1; i >= 0; i--) {
-                if (camera.position.distanceTo(listaErvas[i].position) < 2.0) {
-                    cena.remove(listaErvas[i]); listaErvas.splice(i, 1);
-                    ervasNoInventario++; document.getElementById('qtd-ervas').innerText = ervasNoInventario;
-                    document.getElementById('legendas').innerText = "Você colheu uma folha medicinal!"; break;
+            if (tempoDecorrido < 3.5) {
+                // Efeito de piscar os olhos simulado pela opacidade da div preta
+                let pulsoPálpebra = Math.max(0, 1 - (tempoDecorrido / 3.5));
+                document.getElementById('palpebras').style.background = `rgba(0,0,0,${pulsoPálpebra})`;
+                document.getElementById('texto-introducao').innerText = "[Visão turva] Abrindo os olhos devagar...";
+            } else {
+                // Olhos abertos completamente
+                document.getElementById('palpebras').style.background = "rgba(0,0,0,0)";
+                document.getElementById('texto-introducao').innerText = "Você acordou nos destroços do avião acidentado.";
+                
+                // Levanta sutilmente a cabeça/câmera para o horizonte após acordar
+                if(camera.rotation.x > 0) {
+                    camera.rotation.x -= 0.002;
                 }
             }
-        });
-        document.getElementById('btn-caderno').addEventListener('click', () => {
-            document.exitPointerLock(); document.getElementById('caderno').style.display = 'block';
-            if (envenenado && ervasNoInventario > 0) {
-                envenenado = false; ervasNoInventario--;
-                document.getElementById('qtd-ervas').innerText = ervasNoInventario;
-                document.getElementById('status-medico').innerText = "Estável";
-                document.getElementById('status-medico').style.color = "green";
-            }
-        });
-        function fecharCaderno() { document.getElementById('caderno').style.display = 'none'; document.body.requestPointerLock(); }
 
-        // --- 8. LOOP ATUALIZAÇÃO ---
-        const relogio = new THREE.Clock();
-        function renderizarJogo() {
-            requestAnimationFrame(renderizarJogo); const delta = relogio.getDelta();
-            if (estadoJogo === "ACORDANDO") {
-                tempoAcordar += delta;
-                if (tempoAcordar < 3.0) {
-                    document.getElementById('legendas').innerText = "[Gemas e tontura] Acordando nos destroços...";
-                    let opacidadeOlhos = Math.max(0, 1 - (tempoAcordar / 3.0));
-                    document.getElementById('visao-efeito').style.background = `rgba(0,0,0,${opacidadeOlhos})`;
-                } else {
-                    document.getElementById('visao-efeito').style.background = "none";
-                    document.getElementById('visao-efeito').style.boxShadow = "inset 0 0 100px rgba(0,0,0,0.8)";
-camera.rotation.set(0, 0, 0); estadoJogo = "JOGANDO";
-document.getElementById('legendas').innerText = "Você recobrou a consciência. Encontre recursos e água.";
-}
-renderizador.render(cena, camera); return;
-}
-if (estadoJogo === "MORTO") {
-document.getElementById('vida-fill').style.width = "0%";
-document.getElementById('visao-efeito').style.background = "rgba(100,0,0,0.4)";
-document.getElementById('legendas').innerText = "O Especialista sucumbiu à selva."; return;
-}
-const direcao = new THREE.Vector3(); camera.getWorldDirection(direcao); direcao.y = 0; direcao.normalize();
-const deLado = new THREE.Vector3(); deLado.crossVectors(camera.up, direcao).normalize();
-const velCaminhada = 4.5 * delta;
-if (teclas['w']) camera.position.addScaledVector(direcao, velCaminhada);
-if (teclas['s']) camera.position.addScaledVector(direcao, -velCaminhada);
-if (teclas['a']) camera.position.addScaledVector(deLado, velCaminhada);
-if (teclas['d']) camera.position.addScaledVector(deLado, -velCaminhada);
-velocidadeY += GRAVIDADE * delta; camera.position.y += velocidadeY * delta;
-if (camera.position.y <= 1.8) { camera.position.y = 1.8; velocidadeY = 0; noChao = true; }
-heroiGrupo.position.set(camera.position.x, camera.position.y - 1.8, camera.position.z); heroiGrupo.rotation.y = camera.rotation.y;
-if (estadoJacare === "ATACANDO") { jacare.position.x += (camera.position.x - jacare.position.x) * delta * 2; }
-else { jacare.position.x += (alvoJacareX - jacare.position.x) * delta * 0.8; }
-listaCobras.forEach(cobra => {
-if (camera.position.distanceTo(cobra.position) < 1.1 && !envenenado) {
-envenenado = true; document.getElementById('status-medico').innerText = "ENVENENADO";
-document.getElementById('status-medico').style.color = "red";
-document.getElementById('legendas').innerText = "PICADO POR JARARACA! USE A ERVA NO GUIA!";
-}
-});
-fome -= delta * 0.6;
-if (envenenado) { vida -= delta * 10; document.getElementById('visao-efeito').style.boxShadow = "inset 0 0 120px rgba(180,0,0,0.8)"; }
-if (vida <= 0) estadoJogo = "MORTO";
-document.getElementById('fome-fill').style.width = Math.max(0, fome) + "%";
-document.getElementById('vida-fill').style.width = Math.max(0, vida) + "%";
-renderizador.render(cena, camera);
-}
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderizador.setSize(window.innerWidth, window.innerHeight); });
-renderizarJogo();
+            renderizador.render(cena, camera);
+        }
+
+        // Ajuste automático caso redimensione a janela
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderizador.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Inicia a execução da animação
+        rodarLoop();
+    </script>
+</body>
+</html>
